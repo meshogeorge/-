@@ -1,0 +1,8 @@
+{
+  "name": "نظام حضور الطلاب",
+  "description": "نظام متطور لتسجيل حضور وغياب الطلاب باستخدام الكود اليدوي وكيـو آر كود (QR Code) مع تقارير وإدارة متكاملة.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}
