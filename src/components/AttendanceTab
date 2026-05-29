@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Student, AttendanceRecord } from '../types';
 import { Scan, Keyboard, CheckCircle2, AlertCircle } from 'lucide-react';
 import QRScanner from './QRScanner';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AttendanceTabProps {
   students: Student[];
