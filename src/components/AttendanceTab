@@ -1,0 +1,202 @@
+import React, { useState } from 'react';
+import { Student, AttendanceRecord } from '../types';
+import { Scan, Keyboard, CheckCircle2, AlertCircle } from 'lucide-react';
+import QRScanner from './QRScanner';
+import { motion, AnimatePresence } from 'motion/react';
+
+interface AttendanceTabProps {
+  students: Student[];
+  records: AttendanceRecord[];
+  onRecordAttendance: (student: Student, method: 'يدوي' | 'QR كاميرا') => void;
+}
+
+export default function AttendanceTab({ students, records, onRecordAttendance }: AttendanceTabProps) {
+  const [manualCode, setManualCode] = useState('');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const handleManualSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const code = manualCode.trim().toUpperCase();
+    if (!code) return;
+
+    const student = students.find(s => s.code.toUpperCase() === code);
+    if (!student) {
+      showNotification('error', `الكود ${code} غير موجود!`);
+      return;
+    }
+
+    onRecordAttendance(student, 'يدوي');
+    showNotification('success', `تم تسجيل حضور ${student.name}`);
+    setManualCode('');
+  };
+
+  const handleQRScan = (decodedText: string) => {
+    const student = students.find(s => s.code.toUpperCase() === decodedText.toUpperCase());
+    if (!student) {
+      showNotification('error', 'الكود الممسوح غير موجود!');
+      return;
+    }
+    
+    onRecordAttendance(student, 'QR كاميرا');
+    showNotification('success', `تم تسجيل حضور ${student.name}`);
+    setIsCameraOpen(false);
+  };
+
+  return (
+    <div className="grid grid-cols-12 gap-6 pb-20 md:pb-0">
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 p-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-[300px] border ${
+              notification.type === 'success' 
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+              : 'bg-rose-50 border-rose-100 text-rose-800'
+            }`}
+          >
+            {notification.type === 'success' ? <CheckCircle2 className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+            <span className="font-bold">{notification.message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar: Interaction Area (4 Columns) */}
+      <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+        {/* QR Section */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col min-h-[400px]">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              المسح الضوئي (QR)
+            </h2>
+            <span className="text-xs font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">CAMERA ACTIVE</span>
+          </div>
+          
+          <div className="flex-1 bg-slate-900 rounded-xl relative overflow-hidden flex items-center justify-center border-4 border-slate-800 min-h-[250px]">
+             {!isCameraOpen ? (
+                <div className="text-center p-6">
+                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Scan className="w-8 h-8 text-white/50" />
+                  </div>
+                  <button 
+                    onClick={() => setIsCameraOpen(true)}
+                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition"
+                  >
+                    تشغيل الكاميـرا
+                  </button>
+                </div>
+             ) : (
+                <>
+                  <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                  <QRScanner isOpen={isCameraOpen} onScan={handleQRScan} />
+                  <p className="absolute bottom-4 text-white/50 text-xs">ضع الكود أمام الكاميرا</p>
+                  <button 
+                    onClick={() => setIsCameraOpen(false)}
+                    className="absolute top-2 left-2 bg-rose-600/80 text-white text-[10px] px-2 py-1 rounded-md"
+                  >
+                    إغلاق
+                  </button>
+                </>
+             )}
+          </div>
+        </div>
+
+        {/* Manual Section */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold mb-4">إدخال يدوي</h2>
+          <form onSubmit={handleManualSubmit} className="relative">
+            <input
+              type="text"
+              placeholder="أدخل كود الطالب..."
+              value={manualCode}
+              onChange={(e) => setManualCode(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-right"
+            />
+            <button 
+              type="submit"
+              className="absolute left-2 top-2 bottom-2 bg-indigo-600 text-white px-4 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            >
+              تسجيل
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Main Area: Stats & Activity (8 Columns) */}
+      <div className="col-span-12 lg:col-span-8 flex flex-col gap-6">
+        {/* Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-indigo-600 rounded-2xl p-6 text-white shadow-lg shadow-indigo-200">
+            <p className="text-indigo-100 text-sm mb-1 font-medium">إجمالي الحضور اليوم</p>
+            <h3 className="text-4xl font-black">
+              {records.filter(r => r.date === new Date().toISOString().split('T')[0]).length}
+            </h3>
+            <p className="text-xs mt-2 text-indigo-200">طالب مسجل اليوم</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm transition-transform hover:scale-[1.02]">
+            <p className="text-slate-500 text-sm mb-1 font-medium">إجمالي المسجلين</p>
+            <h3 className="text-4xl font-black text-slate-800">
+              {students.length}
+            </h3>
+            <p className="text-xs mt-2 text-emerald-500 font-bold">طالب مضاف</p>
+          </div>
+        </div>
+
+        {/* Recent Activity Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h2 className="text-lg font-bold">آخر المسجلين (اليوم)</h2>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+              <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">تحديث فوري</span>
+            </div>
+          </div>
+          <div className="flex-1 overflow-auto max-h-[400px]">
+             <table className="w-full text-right">
+                <thead className="sticky top-0 bg-slate-50 text-slate-500 text-[10px] uppercase z-10">
+                   <tr>
+                      <th className="px-6 py-3 font-medium">الطالب</th>
+                      <th className="px-6 py-3 font-medium text-center">الكود</th>
+                      <th className="px-6 py-3 font-medium text-center">الوقت</th>
+                      <th className="px-6 py-3 font-medium text-center">الحالة</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                   {records.filter(r => r.date === new Date().toISOString().split('T')[0]).slice(0, 10).map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs uppercase">
+                            {record.studentName.substring(0, 1)}
+                          </div>
+                          <span className="font-medium text-sm text-slate-700">{record.studentName}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center font-mono text-xs text-slate-500 uppercase">{record.studentCode}</td>
+                        <td className="px-6 py-4 text-center text-xs text-slate-600">{record.time}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">حاضر</span>
+                        </td>
+                      </tr>
+                   ))}
+                   {records.filter(r => r.date === new Date().toISOString().split('T')[0]).length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400 text-sm italic">
+                          لا يوجد حضور مسجل اليوم حتى الآن
+                        </td>
+                      </tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
